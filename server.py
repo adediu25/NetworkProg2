@@ -1,5 +1,6 @@
 import socket
 import threading
+import json
 
 class MessageBoard:
     def __init__(self, grp_id: int, grp_name: str):
@@ -45,7 +46,9 @@ class ClientRequest:
         self.process_request()
 
     def process_request(self):
-        print("Hello!!")
+        req_message = self.conn_sock.recv(1024).decode("ascii")
+        print(req_message)
+        req_json = json.loads(req_message)
 
     def main(self):
         while True:

@@ -1,4 +1,5 @@
 import socket
+import json
 
 class BulletinClient:
     def __init__(self):
@@ -99,8 +100,9 @@ class BulletinClient:
         
         self.send_message(message)
     
-    def send_message(self, message):
+    def send_message(self, message:dict):
         print(message)
+        self.connection_socket.send(json.dumps(message).encode("ascii"))
 
 
 if __name__ == "__main__":
