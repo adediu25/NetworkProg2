@@ -5,14 +5,9 @@ class BulletinClient:
     def __init__(self):
         self.connection_socket = socket.socket()
 
-    def connect_to_server(self, addr, port):
-        self.connection_socket.connect((addr, port))
-
-    def disconnect_from_server(self):
-        self.connection_socket.close()
-
+    # Processes given command and executes appropriate action 
     # return True if exiting program, else False
-    def process_command(self, command:str):
+    def process_command(self, command:str) -> bool:
         split_command = command.split()
         
         # return if invalid command format
@@ -36,7 +31,18 @@ class BulletinClient:
 
         # process all other commands
         if (split_command[0] == "%connect"):
-            self.connection_socket.connect((split_command[1], int(split_command[2])))
+            # get address and port number from command line
+            addr = split_command[1] 
+            port = int(split_command[2])
+            
+            # try connecting to server
+            try:
+                self.connection_socket.connect((addr, port))
+            except:
+                print("Error connecting to server")
+                return False
+
+            # if connection is successful, prompt for username
             username = input("Enter a username for the server: ")
             self.choose_username(username)
 
@@ -96,9 +102,28 @@ class BulletinClient:
 
         return False
 
+    # Sends username to server until a valid one is chosen
     def choose_username(self, username:str):
-        ...
+        # construct and send protocol message
+        message = {
+            "command":"choose username",
+            "body":username
+        }
+        self.send_message(message)
 
+        # receive response 
+        response = self.receive_response()
+
+        # Ask user for username again if not valid/unique and
+        # recursively call this function.
+        if response["code"] == "1":
+            print("Error: username is not unique")
+            new_username = input("Enter a username: ")
+            self.choose_username(new_username)
+        else:
+            print(f"Welcome {username}!")
+
+    # posts a message with given subject and body to public board
     def post_message(self, subject:str, body:str):
         message = {
                 "command":"post",
@@ -110,9 +135,15 @@ class BulletinClient:
         
         self.send_message(message)
     
+    # convert json representation of protocol message to string
+    # and send it to server
     def send_message(self, message:dict):
         print(message)
         self.connection_socket.send(json.dumps(message).encode("ascii"))
+
+    # receive response from server and return json representation
+    def receive_response(self):
+        return json.loads(self.connection_socket.recv(1024).decode("ascii"))
 
 
 if __name__ == "__main__":
