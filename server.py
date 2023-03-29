@@ -19,6 +19,24 @@ class BulletinServer:
         for board in boards:    
             self.message_boards.append(board)
 
+    def remove_connection(self, conn) -> None:
+        pass
+        #TODO: remove given connection object from self.connections
+
+    def remove_user(self, username:str) -> None:
+        for board in self.message_boards:
+            for name in board.users:
+                if name == username:
+                    board.users.remove(name)
+                    break
+
+    def check_unique_username(self, username:str) -> bool:
+        for connection in self.connections:
+            if connection.username == username:
+                return False
+        
+        return True
+
     def main(self):
         port = 6969
 
@@ -32,14 +50,15 @@ class BulletinServer:
             
             # print(self.connections[0])
 
-            client_req = ClientRequest(connection_socket)
+            client_req = ClientRequest(connection_socket, self)
             self.connections.append(client_req)
             thread = threading.Thread(target=client_req)
             thread.start()
 
 class ClientRequest:
-    def __init__(self, sock):
+    def __init__(self, sock, server):
         self.conn_sock = sock
+        self.serv = server
         self.username = ""
 
     def __call__(self):
@@ -57,13 +76,24 @@ class ClientRequest:
             body = request_json["body"]
             
             print(command)
+            response_code, response_body = self.execute_request(command, body)
 
             if command == "exit":
                 terminate = True       
 
-    def main(self):
-        while True:
-            print("poo")
+    def execute_request(self, command:str, body:str) -> (str, str):
+        if command == "exit":
+            self.serv.remove_user(self.username)
+            # TODO: remove user from all boards and connection list
+        elif command == "choose username":
+            if self.serv.check_unique_username(body):
+                self.username = body
+                return ("0", "")
+            else:
+                return ("1", f"Username {body} already exists.")
+        elif command == "join":
+            ...
+        
 
 if __name__ == "__main__":
     server = BulletinServer()

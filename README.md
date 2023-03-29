@@ -61,7 +61,8 @@ Usage: `%exit`
 # Response codes
 
 - 0: success
-- 
+- 1: username not unique
+- 2: not in group
 
 # Protocol Message Formats
 
