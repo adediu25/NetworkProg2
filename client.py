@@ -22,6 +22,16 @@ class BulletinClient:
 
         # return true if given exit command
         if (split_command[0] == "%exit"):
+            message = {
+                "command":"exit",
+                "body":""
+            }
+
+            self.send_message(message)
+
+            # close connection with server
+            self.connection_socket.close()
+            
             return True
 
         # process all other commands

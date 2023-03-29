@@ -46,9 +46,20 @@ class ClientRequest:
         self.process_request()
 
     def process_request(self):
-        req_message = self.conn_sock.recv(1024).decode("ascii")
-        print(req_message)
-        req_json = json.loads(req_message)
+        terminate = False
+
+        while not terminate:
+            req_message = self.conn_sock.recv(1024).decode("ascii")
+            print(req_message)
+            request_json = json.loads(req_message)
+
+            command = request_json["command"]
+            body = request_json["body"]
+            
+            print(command)
+
+            if command == "exit":
+                terminate = True       
 
     def main(self):
         while True:
