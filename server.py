@@ -11,9 +11,12 @@ class MessageBoard:
         self.users = []
 
 class BulletinServer:
-    def __init__(self):       
+    def __init__(self, port_num):       
         self.connections = []
         self.message_boards = []
+        self.port = port_num
+        self.server_socket = socket.socket()
+        self.server_socket.bind(("",self.port))
 
     def add_boards(self, boards: list[MessageBoard]):
         for board in boards:    
@@ -37,16 +40,11 @@ class BulletinServer:
         
         return True
 
-    def main(self):
-        port = 6969
-
-        server_socket = socket.socket()
-        server_socket.bind(('', port))
-
-        server_socket.listen()
+    def __call__(self):
+        self.server_socket.listen()
 
         while True:
-            connection_socket, address = server_socket.accept()
+            connection_socket, address = self.server_socket.accept()
             
             # print(self.connections[0])
 
@@ -64,7 +62,7 @@ class ClientRequest:
     def __call__(self):
         self.process_request()
 
-    def process_request(self):
+    def process_request(self) -> None:
         terminate = False
 
         while not terminate:
@@ -77,14 +75,18 @@ class ClientRequest:
             
             print(command)
             response_code, response_body = self.execute_request(command, body)
+            self.send_response(response_code, response_body)
 
             if command == "exit":
-                terminate = True       
+                terminate = True
+                       
 
     def execute_request(self, command:str, body:str) -> (str, str):
         if command == "exit":
             self.serv.remove_user(self.username)
-            # TODO: remove user from all boards and connection list
+            self.serv.remove_connection(self)
+            self.conn_sock.close()
+            return ("0", "")
         elif command == "choose username":
             if self.serv.check_unique_username(body):
                 self.username = body
@@ -93,10 +95,26 @@ class ClientRequest:
                 return ("1", f"Username {body} already exists.")
         elif command == "join":
             ...
-        
+        elif command == "users":
+            ...
+        elif command == "post":
+            ...
+        elif command == "message":
+            ...
+        elif command == "leave":
+            ...
+    
+    def send_response(self, code:str, body:str) -> None:
+        message = {
+            "code":code,
+            "body":body
+        }
+        self.conn_sock.send(json.dumps(message).encode("ascii"))
 
 if __name__ == "__main__":
-    server = BulletinServer()
+    server_port = 6969
+    
+    server = BulletinServer(server_port)
 
     server.add_boards(
         [
@@ -109,4 +127,4 @@ if __name__ == "__main__":
         ]
     )
 
-    server.main()
+    server()

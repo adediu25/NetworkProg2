@@ -22,7 +22,7 @@ class BulletinClient:
                 "body":""
             }
 
-            self.send_message(message)
+            self.send_request(message)
 
             # close connection with server
             self.connection_socket.close()
@@ -52,7 +52,7 @@ class BulletinClient:
                 "body":""
             }
 
-            self.send_message(message)
+            self.send_request(message)
 
         elif (split_command[0] == "%post"):
             subject = ""
@@ -77,7 +77,7 @@ class BulletinClient:
                 "body":""
             }
 
-            self.send_message(message)
+            self.send_request(message)
 
         elif (split_command[0] == "%message"):
             message_id = split_command[1]
@@ -87,7 +87,7 @@ class BulletinClient:
                 "body":message_id
             }
 
-            self.send_message(message)
+            self.send_requeset(message)
 
         elif (split_command[0] == "%leave"):
             message = {
@@ -95,7 +95,7 @@ class BulletinClient:
                 "body":""
             }
 
-            self.send_message(message)
+            self.send_request(message)
 
         else:
             print("Invalid command: command not recognized")
@@ -109,10 +109,10 @@ class BulletinClient:
             "command":"choose username",
             "body":username
         }
-        self.send_message(message)
+        self.send_request(message)
 
         # receive response 
-        response = self.receive_response()
+        response = json.loads(self.receive_response())
 
         # Ask user for username again if not valid/unique and
         # recursively call this function.
@@ -133,17 +133,17 @@ class BulletinClient:
                 }
             }
         
-        self.send_message(message)
+        self.send_request(message)
     
     # convert json representation of protocol message to string
     # and send it to server
-    def send_message(self, message:dict):
+    def send_request(self, message:dict):
         print(message)
         self.connection_socket.send(json.dumps(message).encode("ascii"))
 
-    # receive response from server and return json representation
-    def receive_response(self):
-        return json.loads(self.connection_socket.recv(1024).decode("ascii"))
+    # receive response from server and return as string
+    def receive_response(self) -> str:
+        return self.connection_socket.recv(1024).decode("ascii")
 
 
 if __name__ == "__main__":
