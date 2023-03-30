@@ -4,6 +4,14 @@ import json
 class BulletinClient:
     def __init__(self):
         self.connection_socket = socket.socket()
+        self.connected = False
+
+    def __call__(self):
+        terminate = False
+        while not terminate:
+            terminate = self.process_command(input("\nEnter a command: "))
+            # response = json.loads(self.receive_response())
+            # print(response)
 
     # Processes given command and executes appropriate action 
     # return True if exiting program, else False
@@ -15,6 +23,12 @@ class BulletinClient:
             print("Invalid command: commands must begin with '%'")
             return False
 
+        # print error if user tries to use a command other than connect
+        # without first being connected to a server
+        if (split_command[0] != '%connect' and not self.connected):
+            print("Error: not connected to a server yet")
+            return False
+
         # return true if given exit command
         if (split_command[0] == "%exit"):
             message = {
@@ -24,13 +38,18 @@ class BulletinClient:
 
             self.send_request(message)
 
+            response = json.loads(self.receive_response())
+            print(response)
+
             # close connection with server
             self.connection_socket.close()
-            
+
             return True
 
         # process all other commands
         if (split_command[0] == "%connect"):
+            # TODO: check invalid command format
+            
             # get address and port number from command line
             addr = split_command[1] 
             port = int(split_command[2])
@@ -38,6 +57,7 @@ class BulletinClient:
             # try connecting to server
             try:
                 self.connection_socket.connect((addr, port))
+                self.connected = True
             except:
                 print("Error connecting to server")
                 return False
@@ -138,7 +158,7 @@ class BulletinClient:
     # convert json representation of protocol message to string
     # and send it to server
     def send_request(self, message:dict):
-        print(message)
+        #print(message)
         self.connection_socket.send(json.dumps(message).encode("ascii"))
 
     # receive response from server and return as string
@@ -150,9 +170,7 @@ if __name__ == "__main__":
     print("Welcome!")
     b = BulletinClient()
     
-    terminate = False
-    while not terminate:
-        terminate = b.process_command(input("Enter a command: "))
+    b()
     
     print("Goodbye!")
 
