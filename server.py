@@ -115,8 +115,8 @@ class ClientRequest:
                 return ("1", f"Username {body} already exists.")
         elif command == "join":
             # TODO: add error handling
-            self.active_group_ids.append("public")
-            self.active_group_ids.append('0')
+            self.active_group_names.append("public")
+            self.active_group_ids.append("0")
 
             messages = self.serv.add_user_to_board(self.username)
             body = ""

@@ -16,7 +16,7 @@ Usage: `%join`
 
 Usage: `%post -s <message subject> -b <message body>`
 
-Protocol Message body:
+Protocol Request Message body:
 
 ```json
 {
@@ -43,7 +43,7 @@ Retreive the message with the given ID from the public board
 
 Usage: `%message <message id>`
 
-Protocol Message body:
+Protocol Response Message body:
 
 ```json
 {
@@ -63,6 +63,7 @@ Usage: `%exit`
 - 0: success
 - 1: username not unique
 - 2: not in group
+- 999: disconnecting
 
 # Protocol Message Formats
 
@@ -75,7 +76,7 @@ Usage: `%exit`
 }
 ```
 
-## Resoponse
+## Response
 
 ```json
 {

@@ -117,6 +117,10 @@ class BulletinClient:
 
             self.send_request(message)
 
+            response = json.loads(self.receive_response())
+            if response["code"] != "0":
+                print(f"Error: {response['body']}")
+
         else:
             print("Invalid command: command not recognized")
 
