@@ -73,6 +73,15 @@ class BulletinClient:
             }
 
             self.send_request(message)
+            response = json.loads(self.receive_response())
+            body = response["body"]
+            print(
+                "Joined public board. Users belonging to group:\n", 
+                body["users"], 
+                "Messages posted to board:\n",
+                body["messages"],
+                sep=""
+            )
 
         elif (split_command[0] == "%post"):
             subject = ""
@@ -90,6 +99,8 @@ class BulletinClient:
                 body += word + " "
 
             self.post_message(subject[:-1], body[:-1])
+            response = json.loads(self.receive_response())
+            print(response["body"])
 
         elif (split_command[0] == "%users"):
             message = {
@@ -98,6 +109,8 @@ class BulletinClient:
             }
 
             self.send_request(message)
+            response = json.loads(self.receive_response())
+            print(response)
 
         elif (split_command[0] == "%message"):
             message_id = split_command[1]
@@ -107,7 +120,10 @@ class BulletinClient:
                 "body":message_id
             }
 
-            self.send_requeset(message)
+            self.send_request(message)
+
+            response = json.loads(self.receive_response())
+            print(response)
 
         elif (split_command[0] == "%leave"):
             message = {
@@ -120,6 +136,8 @@ class BulletinClient:
             response = json.loads(self.receive_response())
             if response["code"] != "0":
                 print(f"Error: {response['body']}")
+            else:
+                print(response)
 
         else:
             print("Invalid command: command not recognized")

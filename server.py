@@ -1,7 +1,20 @@
 import socket
 import threading
 import json
+from datetime import date
 
+# this class will be used to create objects that represent
+# a message posted to a board with given attributes
+class PostedMessage:
+    def __init__(self, message_id:int, sender:str, subject:str, body:str):
+        self.message_id = message_id
+        self.sender = sender
+        self.post_date = date.today()
+        self.subject = subject
+        self.body = body
+
+# this class creates objects that represent a messsage board
+# earch board will have individual ids, names, messages, and users
 class MessageBoard:
     def __init__(self, grp_id: int, grp_name: str):
         self.group_id = grp_id
@@ -32,6 +45,8 @@ class BulletinServer:
         if public:
             self.message_boards[0].users.append(user)
             return self.message_boards[0].messages[-2:]
+
+        # TODO: add handling for part 2
     
     # returns list of users in given group, defaults to public group
     def get_group_users(self, public=True, group_id=None, group_name=None) -> list:
@@ -39,6 +54,7 @@ class BulletinServer:
 
         if public:
             return self.message_boards[0].users
+        # TODO: add handling for part 2
         
         return users
 
@@ -46,6 +62,7 @@ class BulletinServer:
     def remove_user_from_group(self, user:str, public=True, group_id=None, group_name=None) -> None:
         if public:
             self.message_boards[0].users.remove(user)
+        # TODO: add handling for part 2
 
     # removes given user from every board on the server
     # this is used if client disconnects without
@@ -62,6 +79,18 @@ class BulletinServer:
         
         return True
 
+    # Posts the message to the given board and sets all attributes of the message
+    # defaults to public board
+    def post_message_to_board(
+        self, user:str, subject:str, body:str, public=True, group_id=None, group_name=None) -> None:
+        if public:
+            self.message_boards[0].messages.append(
+                PostedMessage(self.message_boards[0].message_id_counter, user, subject, body)
+            )
+            self.message_boards[0].message_id_counter += 1
+        # TODO: add handling for part 2
+
+
     def __call__(self):
         self.server_socket.listen()
 
@@ -73,6 +102,7 @@ class BulletinServer:
             thread = threading.Thread(target=client_req)
             thread.start()
 
+# this class handles each connection thread that is accepted by the server
 class ClientRequest:
     def __init__(self, sock, server):
         self.conn_sock = sock
@@ -102,7 +132,7 @@ class ClientRequest:
                 terminate = True
                 self.conn_sock.close()
 
-    def execute_request(self, command:str, body:str) -> (str, str):
+    def execute_request(self, command:str, body:str or dict) -> (str, str or dict):
         if command == "exit":
             self.serv.remove_user(self.username)
             self.serv.remove_connection(self)
@@ -119,15 +149,32 @@ class ClientRequest:
             self.active_group_ids.append("0")
 
             messages = self.serv.add_user_to_board(self.username)
-            body = ""
+            users = self.serv.get_group_users()
+
+            users_str = ""
+            for user in users:
+                users_str += f"{user}\n"
+
+            messages_str = ""
             for message in messages:
-                body += message + "\n"
-            return ("0", body)
+                messages_str += f"Message ID: {message.message_id}, Sender: {message.sender}, Post Date: {message.post_date}, Subject: {message.subject}\n"
+            
+            response_body = {
+                "users": users_str,
+                "messages": messages_str
+            }
+
+            return ("0", response_body)
         elif command == "users":
             users = self.serv.get_group_users()
             return ("0", users)
         elif command == "post":
-            ...
+            subject = body["subject"]
+            body = body["body"]
+
+            self.serv.post_message_to_board(self.username, subject, body)
+
+            return("0", "Message was posted!")
         elif command == "message":
             ...
         elif command == "leave":
