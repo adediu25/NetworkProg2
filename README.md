@@ -60,6 +60,8 @@ Retreive list of all users in public group
 
 Usage: `%users`
 
+Protocol Response Message body: list object of all users
+
 ## %leave
 
 Leave public group
@@ -72,12 +74,14 @@ Retreive the message with the given ID from the public board
 
 Usage: `%message <message id>`
 
+Protocol Request Message body: message ID
+
 Protocol Response Message body:
 
 ```json
 {
     "subject": "<subject line>",
-    "body": "<message id>"
+    "body": "<message body>"
 }
 ```
 
