@@ -36,7 +36,8 @@ class BulletinServer:
             self.message_boards.append(board)
 
     def remove_connection(self, conn) -> None:
-        pass
+        if conn in self.connections:
+            self.connections.remove(conn)
         #TODO: remove given connection object from self.connections
     
     # adds given user to specified board, defaults to public board
@@ -69,7 +70,8 @@ class BulletinServer:
     # leaving groups
     def remove_user(self, username:str) -> None:
         for board in self.message_boards:
-            board.users.remove(username)
+            if username in board.users:
+                board.users.remove(username)
     
     # checks uniqueness of given username among usernames of connected users
     def check_unique_username(self, username:str) -> bool:
@@ -89,6 +91,42 @@ class BulletinServer:
             )
             self.message_boards[0].message_id_counter += 1
         # TODO: add handling for part 2
+
+    # returns message subject and body by given message id from given group
+    # defaults to public board
+    def get_message_from_board(self, message_id:str, public=True, group_id=None, group_name=None) -> dict:
+        if public:
+            for message in self.message_boards[0].messages:
+                if str(message.message_id) == message_id:
+                    return {
+                        "subject":message.subject,
+                        "body":message.body
+                    }
+        # TODO: add handling for part 2
+
+    def check_updates(self, usrs:list, msgs:list, public=True, group_id=None, group_name=None) -> (list,list,list):
+        users_joined = []
+        users_left = []
+        messages_added = []
+
+        if public:
+            for user in self.message_boards[0].users:
+                if user not in usrs:
+                    users_joined.append(user)
+            
+            for user in usrs:
+                if user not in self.message_boards[0].users:
+                    users_left.append(user)
+
+            if len(msgs) < len(self.message_boards[0].messages):
+                new_messages = self.message_boards[0].messages[len(msgs):]
+                for message in new_messages:
+                    messages_added.append(f"Message ID: {message.message_id}, Sender: {message.sender}, Post Date: {message.post_date}, Subject: {message.subject}")
+
+            return users_joined, users_left, messages_added
+
+        # TODO: add handling for part 2
+
 
 
     def __call__(self):
@@ -151,17 +189,13 @@ class ClientRequest:
             messages = self.serv.add_user_to_board(self.username)
             users = self.serv.get_group_users()
 
-            users_str = ""
-            for user in users:
-                users_str += f"{user}\n"
-
-            messages_str = ""
+            messages_list = []
             for message in messages:
-                messages_str += f"Message ID: {message.message_id}, Sender: {message.sender}, Post Date: {message.post_date}, Subject: {message.subject}\n"
+                messages_list.append(f"Message ID: {message.message_id}, Sender: {message.sender}, Post Date: {message.post_date}, Subject: {message.subject}")
             
             response_body = {
-                "users": users_str,
-                "messages": messages_str
+                "users": users,
+                "messages": messages_list
             }
 
             return ("0", response_body)
@@ -176,7 +210,8 @@ class ClientRequest:
 
             return("0", "Message was posted!")
         elif command == "message":
-            ...
+            message = self.serv.get_message_from_board(body)
+            return ("0", message)
         elif command == "leave":
             # return an error if client is not in the public group yet
             if "0" not in self.active_group_ids:
@@ -186,6 +221,20 @@ class ClientRequest:
                 self.active_group_ids.remove("0")
                 self.active_group_names.remove("public")
                 return ("0", "Left public group")
+        elif command == "public_updates":
+            curr_users = body["client_user_list"]
+            curr_messages = body["client_message_list"]
+
+            users_joined, users_left, messages_added = self.serv.check_updates(curr_users, curr_messages)
+
+            response_body = {
+                "joined":users_joined,
+                "left":users_left,
+                "new_messages":messages_added
+            }
+
+            return ("0", response_body)
+
     
     # construct protocol message with given code and body
     # and send the response to the client

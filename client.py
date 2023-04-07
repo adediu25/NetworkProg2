@@ -5,13 +5,17 @@ class BulletinClient:
     def __init__(self):
         self.connection_socket = socket.socket()
         self.connected = False
+        self.joined_public = False
+        self.public_messages = []
+        self.public_users = []
 
     def __call__(self):
         terminate = False
         while not terminate:
             terminate = self.process_command(input("\nEnter a command: "))
-            # response = json.loads(self.receive_response())
-            # print(response)
+
+            if self.joined_public:
+                self.check_public_updates()
 
     # Processes given command and executes appropriate action 
     # return True if exiting program, else False
@@ -75,13 +79,18 @@ class BulletinClient:
             self.send_request(message)
             response = json.loads(self.receive_response())
             body = response["body"]
-            print(
-                "Joined public board. Users belonging to group:\n", 
-                body["users"], 
-                "Messages posted to board:\n",
-                body["messages"],
-                sep=""
-            )
+
+            print("Joined public board. Users belonging to group:")
+            for user in body["users"]:
+                print(user)
+            self.public_users = body["users"]
+
+            print("Messages posted to board:")
+            for mes in body["messages"]:
+                print(mes)
+            self.public_messages = body["messages"]
+
+            self.joined_public = True
 
         elif (split_command[0] == "%post"):
             subject = ""
@@ -110,7 +119,9 @@ class BulletinClient:
 
             self.send_request(message)
             response = json.loads(self.receive_response())
-            print(response)
+            print("Users in public group:")
+            for user in response["body"]:
+                print(user)
 
         elif (split_command[0] == "%message"):
             message_id = split_command[1]
@@ -123,7 +134,7 @@ class BulletinClient:
             self.send_request(message)
 
             response = json.loads(self.receive_response())
-            print(response)
+            print(f"Subject: {response['body']['subject']}\nBody: {response['body']['body']}")
 
         elif (split_command[0] == "%leave"):
             message = {
@@ -137,7 +148,10 @@ class BulletinClient:
             if response["code"] != "0":
                 print(f"Error: {response['body']}")
             else:
-                print(response)
+                print(response["body"])
+                self.public_messages = []
+                self.public_users = []
+                self.joined_public = False
 
         else:
             print("Invalid command: command not recognized")
@@ -186,6 +200,41 @@ class BulletinClient:
     # receive response from server and return as string
     def receive_response(self) -> str:
         return self.connection_socket.recv(1024).decode("ascii")
+
+    def check_public_updates(self):
+        request = {
+            "command":"public_updates",
+            "body":{
+                "client_user_list":self.public_users,
+                "client_message_list":self.public_messages
+            }
+        }
+
+        self.send_request(request)
+        print(request)
+
+        response = json.loads(self.receive_response())
+        print(response)
+
+        usrs_joined = response["body"]["joined"]
+        usrs_left = response["body"]["left"]
+        new_messages = response["body"]["new_messages"]
+
+        if len(usrs_joined) != 0:
+            print("Users joined public group:")
+            for usr in usrs_joined:
+                print(usr)
+                self.public_users.append(usr)
+        if len(usrs_left) != 0:
+            print("Users left public group:")
+            for usr in usrs_left:
+                print(usr)
+                self.public_users.remove(usr)
+        if len(new_messages) != 0:
+            print("New messages in public group:")
+            for msg in new_messages:
+                print(msg)
+                self.public_messages.append(msg)
 
 
 if __name__ == "__main__":
