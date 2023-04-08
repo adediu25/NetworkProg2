@@ -23,6 +23,7 @@ class MessageBoard:
         self.messages = []
         self.users = []
 
+# this is the main class which runs the server and accepts connections
 class BulletinServer:
     def __init__(self, port_num):       
         self.connections = []
@@ -31,10 +32,13 @@ class BulletinServer:
         self.server_socket = socket.socket()
         self.server_socket.bind(("",self.port))
 
+    # adds the list of MessageBoard objects to the server
+    # should be used once after initializing server object
     def add_boards(self, boards: list[MessageBoard]):
         for board in boards:    
             self.message_boards.append(board)
 
+    # removes socket object from connections when client disconnects
     def remove_connection(self, conn) -> None:
         if conn in self.connections:
             self.connections.remove(conn)
@@ -104,6 +108,12 @@ class BulletinServer:
                     }
         # TODO: add handling for part 2
 
+    # This function is serves the purpose of sending updates to the client
+    # including users that joined or left a group and new messages posted to a boards
+    # The function takes a list of users and messages from the client that the client
+    # has knowledge of on its end. The function will check for differences and return 
+    # 3 lists of new users, users that left, and new messages
+    # Checks for updates in specified board, defaults to public board
     def check_updates(self, usrs:list, msgs:list, public=True, group_id=None, group_name=None) -> (list,list,list):
         users_joined = []
         users_left = []
@@ -152,9 +162,11 @@ class ClientRequest:
     def __call__(self):
         self.process_request()
 
+    # processes request received from client connection
     def process_request(self) -> None:
         terminate = False
 
+        # continuously process requests until client disconnects
         while not terminate:
             req_message = self.conn_sock.recv(1024).decode("ascii")
             print(req_message)
@@ -163,6 +175,7 @@ class ClientRequest:
             command = request_json["command"]
             body = request_json["body"]
             
+            # execute the received command and send response
             response_code, response_body = self.execute_request(command, body)
             self.send_response(response_code, response_body)
 
@@ -170,23 +183,34 @@ class ClientRequest:
                 terminate = True
                 self.conn_sock.close()
 
+    # execute corresponding actions for request
+    # returns response code and response body for client
     def execute_request(self, command:str, body:str or dict) -> (str, str or dict):
         if command == "exit":
+            # remove user and connection when client exits
             self.serv.remove_user(self.username)
             self.serv.remove_connection(self)
             return ("999", "Disconnecting, goodbye!")
         elif command == "choose username":
+            # return success if username is unique
             if self.serv.check_unique_username(body):
                 self.username = body
                 return ("0", "Username accepted")
+            # else return error to client
             else:
                 return ("1", f"Username {body} already exists.")
         elif command == "join":
-            # TODO: add error handling
+            # return an error if client is joining when they are already in
+            if "0" in self.active_group_ids:
+                return("3", "You are already in the group")
+
+            # add public group to active memberships for client
             self.active_group_names.append("public")
             self.active_group_ids.append("0")
 
+            # add user to board and get last 2 messages
             messages = self.serv.add_user_to_board(self.username)
+            # get users in group
             users = self.serv.get_group_users()
 
             messages_list = []
@@ -198,18 +222,22 @@ class ClientRequest:
                 "messages": messages_list
             }
 
+            # sends group users and messages to client in response
             return ("0", response_body)
         elif command == "users":
+            # get users from server
             users = self.serv.get_group_users()
             return ("0", users)
         elif command == "post":
             subject = body["subject"]
             body = body["body"]
 
+            # post message to server
             self.serv.post_message_to_board(self.username, subject, body)
 
             return("0", "Message was posted!")
         elif command == "message":
+            # get message from server
             message = self.serv.get_message_from_board(body)
             return ("0", message)
         elif command == "leave":
@@ -217,6 +245,7 @@ class ClientRequest:
             if "0" not in self.active_group_ids:
                 return ("2", "You cannot leave the group because are not in the group")
             else:
+                # remove client from public group
                 self.serv.remove_user_from_group(self.username)
                 self.active_group_ids.remove("0")
                 self.active_group_names.remove("public")

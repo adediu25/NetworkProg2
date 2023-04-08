@@ -96,6 +96,7 @@ Usage: `%exit`
 - 0: success
 - 1: username not unique
 - 2: not in group
+- 3: already in group
 - 999: disconnecting
 
 # Protocol Message Formats

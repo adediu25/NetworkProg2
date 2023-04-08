@@ -6,14 +6,18 @@ class BulletinClient:
         self.connection_socket = socket.socket()
         self.connected = False
         self.joined_public = False
+        # client maintains lists of users and messages that it currently knows of
         self.public_messages = []
         self.public_users = []
 
     def __call__(self):
         terminate = False
+
+        # continuously prompt user for command until client exits program
         while not terminate:
             terminate = self.process_command(input("\nEnter a command: "))
 
+            # if user has joined public group, check for updates with server
             if self.joined_public:
                 self.check_public_updates()
 
@@ -76,15 +80,18 @@ class BulletinClient:
                 "body":""
             }
 
+            # send request to join and receive response
             self.send_request(message)
             response = json.loads(self.receive_response())
             body = response["body"]
 
+            # display users belonging to joined group
             print("Joined public board. Users belonging to group:")
             for user in body["users"]:
                 print(user)
             self.public_users = body["users"]
 
+            # display last 2 messages from board
             print("Messages posted to board:")
             for mes in body["messages"]:
                 print(mes)
@@ -96,6 +103,9 @@ class BulletinClient:
             subject = ""
             body = ""
             
+            # TODO: add error checking
+
+            # parse command for subject and body
             for i, word in enumerate(split_command):
                 if i == 0 or i == 1:
                     continue
@@ -133,6 +143,7 @@ class BulletinClient:
 
             self.send_request(message)
 
+            # receive response and display message subject and body
             response = json.loads(self.receive_response())
             print(f"Subject: {response['body']['subject']}\nBody: {response['body']['body']}")
 
@@ -145,8 +156,10 @@ class BulletinClient:
             self.send_request(message)
 
             response = json.loads(self.receive_response())
+            # display error if command fails
             if response["code"] != "0":
                 print(f"Error: {response['body']}")
+            # clear out lists of users and messages for group
             else:
                 print(response["body"])
                 self.public_messages = []
@@ -201,7 +214,10 @@ class BulletinClient:
     def receive_response(self) -> str:
         return self.connection_socket.recv(1024).decode("ascii")
 
+    # this function checks for updates to public group users and messages
     def check_public_updates(self):
+        
+        # send request to check updates on known users and messages
         request = {
             "command":"public_updates",
             "body":{
@@ -220,6 +236,7 @@ class BulletinClient:
         usrs_left = response["body"]["left"]
         new_messages = response["body"]["new_messages"]
 
+        # display any updates to user
         if len(usrs_joined) != 0:
             print("Users joined public group:")
             for usr in usrs_joined:
