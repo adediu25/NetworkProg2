@@ -1,17 +1,29 @@
 import socket
+import json
 
 class BulletinClient:
     def __init__(self):
         self.connection_socket = socket.socket()
+        self.connected = False
+        self.joined_public = False
+        # client maintains lists of users and messages that it currently knows of
+        self.public_messages = []
+        self.public_users = []
 
-    def connect_to_server(self, addr, port):
-        self.connection_socket.connect((addr, port))
+    def __call__(self):
+        terminate = False
 
-    def disconnect_from_server(self):
-        self.connection_socket.close()
+        # continuously prompt user for command until client exits program
+        while not terminate:
+            terminate = self.process_command(input("\nEnter a command: "))
 
+            # if user has joined public group, check for updates with server
+            if self.joined_public:
+                self.check_public_updates()
+
+    # Processes given command and executes appropriate action 
     # return True if exiting program, else False
-    def process_command(self, command:str):
+    def process_command(self, command:str) -> bool:
         split_command = command.split()
         
         # return if invalid command format
@@ -19,13 +31,46 @@ class BulletinClient:
             print("Invalid command: commands must begin with '%'")
             return False
 
+        # print error if user tries to use a command other than connect
+        # without first being connected to a server
+        if (split_command[0] != '%connect' and not self.connected):
+            print("Error: not connected to a server yet")
+            return False
+
         # return true if given exit command
         if (split_command[0] == "%exit"):
+            message = {
+                "command":"exit",
+                "body":""
+            }
+
+            self.send_request(message)
+
+            response = json.loads(self.receive_response())
+            print(response)
+
+            # close connection with server
+            self.connection_socket.close()
+
             return True
 
         # process all other commands
         if (split_command[0] == "%connect"):
-            self.connection_socket.connect((split_command[1], int(split_command[2])))
+            # TODO: check invalid command format
+            
+            # get address and port number from command line
+            addr = split_command[1] 
+            port = int(split_command[2])
+            
+            # try connecting to server
+            try:
+                self.connection_socket.connect((addr, port))
+                self.connected = True
+            except:
+                print("Error connecting to server")
+                return False
+
+            # if connection is successful, prompt for username
             username = input("Enter a username for the server: ")
             self.choose_username(username)
 
@@ -35,12 +80,32 @@ class BulletinClient:
                 "body":""
             }
 
-            self.send_message(message)
+            # send request to join and receive response
+            self.send_request(message)
+            response = json.loads(self.receive_response())
+            body = response["body"]
+
+            # display users belonging to joined group
+            print("Joined public board. Users belonging to group:")
+            for user in body["users"]:
+                print(user)
+            self.public_users = body["users"]
+
+            # display last 2 messages from board
+            print("Messages posted to board:")
+            for mes in body["messages"]:
+                print(mes)
+            self.public_messages = body["messages"]
+
+            self.joined_public = True
 
         elif (split_command[0] == "%post"):
             subject = ""
             body = ""
             
+            # TODO: add error checking
+
+            # parse command for subject and body
             for i, word in enumerate(split_command):
                 if i == 0 or i == 1:
                     continue
@@ -53,6 +118,8 @@ class BulletinClient:
                 body += word + " "
 
             self.post_message(subject[:-1], body[:-1])
+            response = json.loads(self.receive_response())
+            print(response["body"])
 
         elif (split_command[0] == "%users"):
             message = {
@@ -60,7 +127,11 @@ class BulletinClient:
                 "body":""
             }
 
-            self.send_message(message)
+            self.send_request(message)
+            response = json.loads(self.receive_response())
+            print("Users in public group:")
+            for user in response["body"]:
+                print(user)
 
         elif (split_command[0] == "%message"):
             message_id = split_command[1]
@@ -70,7 +141,11 @@ class BulletinClient:
                 "body":message_id
             }
 
-            self.send_message(message)
+            self.send_request(message)
+
+            # receive response and display message subject and body
+            response = json.loads(self.receive_response())
+            print(f"Subject: {response['body']['subject']}\nBody: {response['body']['body']}")
 
         elif (split_command[0] == "%leave"):
             message = {
@@ -78,16 +153,46 @@ class BulletinClient:
                 "body":""
             }
 
-            self.send_message(message)
+            self.send_request(message)
+
+            response = json.loads(self.receive_response())
+            # display error if command fails
+            if response["code"] != "0":
+                print(f"Error: {response['body']}")
+            # clear out lists of users and messages for group
+            else:
+                print(response["body"])
+                self.public_messages = []
+                self.public_users = []
+                self.joined_public = False
 
         else:
             print("Invalid command: command not recognized")
 
         return False
 
+    # Sends username to server until a valid one is chosen
     def choose_username(self, username:str):
-        ...
+        # construct and send protocol message
+        message = {
+            "command":"choose username",
+            "body":username
+        }
+        self.send_request(message)
 
+        # receive response 
+        response = json.loads(self.receive_response())
+
+        # Ask user for username again if not valid/unique and
+        # recursively call this function.
+        if response["code"] == "1":
+            print("Error: username is not unique")
+            new_username = input("Enter a username: ")
+            self.choose_username(new_username)
+        else:
+            print(f"Welcome {username}!")
+
+    # posts a message with given subject and body to public board
     def post_message(self, subject:str, body:str):
         message = {
                 "command":"post",
@@ -97,19 +202,63 @@ class BulletinClient:
                 }
             }
         
-        self.send_message(message)
+        self.send_request(message)
     
-    def send_message(self, message):
-        print(message)
+    # convert json representation of protocol message to string
+    # and send it to server
+    def send_request(self, message:dict):
+        #print(message)
+        self.connection_socket.send(json.dumps(message).encode("ascii"))
+
+    # receive response from server and return as string
+    def receive_response(self) -> str:
+        return self.connection_socket.recv(1024).decode("ascii")
+
+    # this function checks for updates to public group users and messages
+    def check_public_updates(self):
+        
+        # send request to check updates on known users and messages
+        request = {
+            "command":"public_updates",
+            "body":{
+                "client_user_list":self.public_users,
+                "client_message_list":self.public_messages
+            }
+        }
+
+        self.send_request(request)
+        print(request)
+
+        response = json.loads(self.receive_response())
+        print(response)
+
+        usrs_joined = response["body"]["joined"]
+        usrs_left = response["body"]["left"]
+        new_messages = response["body"]["new_messages"]
+
+        # display any updates to user
+        if len(usrs_joined) != 0:
+            print("Users joined public group:")
+            for usr in usrs_joined:
+                print(usr)
+                self.public_users.append(usr)
+        if len(usrs_left) != 0:
+            print("Users left public group:")
+            for usr in usrs_left:
+                print(usr)
+                self.public_users.remove(usr)
+        if len(new_messages) != 0:
+            print("New messages in public group:")
+            for msg in new_messages:
+                print(msg)
+                self.public_messages.append(msg)
 
 
 if __name__ == "__main__":
     print("Welcome!")
     b = BulletinClient()
     
-    terminate = False
-    while not terminate:
-        terminate = b.process_command(input("Enter a command: "))
+    b()
     
     print("Goodbye!")
 
