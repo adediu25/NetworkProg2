@@ -52,16 +52,24 @@ class BulletinServer:
             return self.message_boards[0].messages[-2:]
 
         # TODO: add handling for part 2
-    
+        else:
+            if group_id is not None:
+                self.message_boards[group_id].users.append(user)
+                return self.message_boards[group_id].messages[-2:]
+            else:
+                ...
+
+
     # returns list of users in given group, defaults to public group
     def get_group_users(self, public=True, group_id=None, group_name=None) -> list:
-        users = []
-
         if public:
             return self.message_boards[0].users
         # TODO: add handling for part 2
-        
-        return users
+        else:
+            if group_id is not None:
+                return self.message_boards[group_id].users
+            else:
+                ...
 
     # remove given user from given group, defaults to public group
     def remove_user_from_group(self, user:str, public=True, group_id=None, group_name=None) -> None:
@@ -282,6 +290,47 @@ class ClientRequest:
             }
 
             return ("0", response_body)
+
+        elif command == "groupjoin":
+            group_identity = body
+
+            if group_identity.isnumeric():
+                grp_id = int(group_identity)
+                grp_name = self.serv.message_boards[grp_id].group_name
+                messages = self.serv.add_user_to_board(self.username, public=False, group_id=grp_id)
+            else:
+                grp_name = group_identity
+                grp_id = self.serv.message_boards.index(grp_name)
+                messages = self.serv.add_user_to_board(self.username, public=False, group_name=grp_name)
+            
+            self.active_group_names.append(grp_name)
+            self.active_group_ids.append(str(grp_id))
+
+            users = self.serv.get_group_users(public=False, group_id=grp_id)
+
+            messages_list = []
+            for message in messages:
+                messages_list.append(f"Message ID: {message.message_id}, Sender: {message.sender}, Post Date: {message.post_date}, Subject: {message.subject}")
+            
+            response_body = {
+                "group_id": grp_id,
+                "users": users,
+                "messages": messages_list
+            }
+
+            return ("0", response_body)
+        
+        elif command == "grouppost":
+            ...
+        
+        elif command == "groupusers":
+            ...
+        
+        elif command == "groupleave":
+            ...
+        
+        elif command == "groupmessage":
+            ...
     
     # construct protocol message with given code and body
     # and send the response to the client

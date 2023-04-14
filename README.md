@@ -91,6 +91,22 @@ Disconnect from server and end client program
 
 Usage: `%exit`
 
+## %groups
+
+Display list of private groups available on the server
+
+Usage: `%groups`
+
+## %groupjoin
+
+Join a private group by given group ID or name
+
+Usage: `%groupjoin <group ID or name>`
+
+User has the choice of giving a group name or a group ID number in the command
+
+## %grouppost
+
 # Response codes
 
 - 0: success
