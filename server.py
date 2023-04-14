@@ -136,8 +136,18 @@ class BulletinServer:
             return users_joined, users_left, messages_added
 
         # TODO: add handling for part 2
+    
+    # returns lists of private group ids and names
+    def get_groups(self) -> (list,list):
+        ids = []
+        names = []
 
+        # iterate through boards but skip first as it is the public one
+        for group in self.message_boards[1:]:
+            ids.append(group.group_id)
+            names.append(group.group_name)
 
+        return ids, names
 
     def __call__(self):
         self.server_socket.listen()
@@ -263,7 +273,15 @@ class ClientRequest:
             }
 
             return ("0", response_body)
+        elif command == "groups":
+            ids, names = self.serv.get_groups()
 
+            response_body = {
+                "ids":ids,
+                "names":names
+            }
+
+            return ("0", response_body)
     
     # construct protocol message with given code and body
     # and send the response to the client

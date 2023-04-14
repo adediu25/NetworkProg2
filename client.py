@@ -47,7 +47,7 @@ class BulletinClient:
             self.send_request(message)
 
             response = json.loads(self.receive_response())
-            print(response)
+            print(response["body"])
 
             # close connection with server
             self.connection_socket.close()
@@ -73,6 +73,8 @@ class BulletinClient:
             # if connection is successful, prompt for username
             username = input("Enter a username for the server: ")
             self.choose_username(username)
+
+            self.display_groups()
 
         elif (split_command[0] == "%join"):
             message = {
@@ -252,6 +254,21 @@ class BulletinClient:
             for msg in new_messages:
                 print(msg)
                 self.public_messages.append(msg)
+            
+    def display_groups(self):
+        request = {
+            "command":"groups",
+            "body":""
+        }
+
+        self.send_request(request)
+        response = json.loads(self.receive_response())
+
+        body = response["body"]
+
+        print("Private groups available to join on server:")
+        for i in range(len(body["ids"])):
+            print(f"ID: {body['ids'][i]} Name: {body['names'][i]}")
 
 
 if __name__ == "__main__":

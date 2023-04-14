@@ -14,7 +14,7 @@ Note: Use backslashes if on Windows. Also, the command `python` may be different
 
 `python /path/to/server.py`
 
-The client program will be running and prompt for commands in the terminal. 
+The client program will be running and prompt for commands in the terminal.
 
 Note: Use backslashes if on Windows. Also, the command `python` may be different on your machine, it may be `python3` or you may need to call the python executable directly from where it is installed on the machine.
 
