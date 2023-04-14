@@ -228,7 +228,8 @@ class BulletinClient:
                     print(mes)
                 self.private_messages[body["group_id"]] = body["messages"]
 
-                self.joined_groups[body["group_id"]] = True
+                self.joined_groups[body["group_id"]-1] = True
+                self.group_names.append(body["group_name"])
 
         elif split_command[0] == "%grouppost":
             ...
@@ -237,7 +238,45 @@ class BulletinClient:
             ...
 
         elif split_command[0] == "%groupleave":
-            ...
+            group_identity = split_command[1]
+            
+            # error checking if given ID
+            if group_identity.isnumeric():
+                # display error if invalid ID
+                if int(group_identity) > 5 or int(group_identity) < 1:
+                    print("Error: invalid group ID")
+                    return False
+                # display error if already joined group with given ID
+                if not self.joined_groups[int(group_identity)-1]:
+                    print(f"Already not in {group_identity}!")
+                    return False
+            # error checking if given name
+            else:
+                # display error if invalid name
+                if group_identity not in self.group_names:
+                    print("Error: invalid group name")
+                    return False
+                # display error if already joined group with given name
+                id_num = self.group_names.index(group_identity)
+                if not self.joined_groups[id_num]:
+                    print(f"Already not in {group_identity}!")
+                    return False
+
+            request = {
+                "command":"groupleave",
+                "body":group_identity
+            }
+
+            self.send_request(request)
+
+            response = json.loads(self.receive_response())
+
+            if response["code"] == "0":
+                print(f"Left group {group_identity}")
+                grp_id = response["body"]["group_id"]
+                self.joined_groups[grp_id-1] = False
+                self.private_messages[grp_id-1] = []
+                self.private_users[grp_id-1] = []
 
         elif split_command[0] == "%groupmessage":
             ...

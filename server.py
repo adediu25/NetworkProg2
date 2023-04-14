@@ -76,6 +76,11 @@ class BulletinServer:
         if public:
             self.message_boards[0].users.remove(user)
         # TODO: add handling for part 2
+        else:
+            if group_id is not None:
+                self.message_boards[group_id].users.remove(user)
+            else:
+                ...
 
     # removes given user from every board on the server
     # this is used if client disconnects without
@@ -297,11 +302,13 @@ class ClientRequest:
             if group_identity.isnumeric():
                 grp_id = int(group_identity)
                 grp_name = self.serv.message_boards[grp_id].group_name
-                messages = self.serv.add_user_to_board(self.username, public=False, group_id=grp_id)
             else:
                 grp_name = group_identity
-                grp_id = self.serv.message_boards.index(grp_name)
-                messages = self.serv.add_user_to_board(self.username, public=False, group_name=grp_name)
+                for idx, group in enumerate(self.serv.message_boards):
+                    if group.group_name == grp_name:
+                        grp_id = idx
+                
+            messages = self.serv.add_user_to_board(self.username, public=False, group_id=grp_id)
             
             self.active_group_names.append(grp_name)
             self.active_group_ids.append(str(grp_id))
@@ -314,6 +321,7 @@ class ClientRequest:
             
             response_body = {
                 "group_id": grp_id,
+                "group_name": grp_name,
                 "users": users,
                 "messages": messages_list
             }
@@ -327,8 +335,29 @@ class ClientRequest:
             ...
         
         elif command == "groupleave":
-            ...
-        
+            group_identity = body
+
+            if group_identity.isnumeric():
+                grp_id = int(group_identity)
+                grp_name = self.serv.message_boards[grp_id].group_name
+            else:
+                grp_name = group_identity
+                for idx, group in enumerate(self.serv.message_boards):
+                    if group.group_name == grp_name:
+                        grp_id = idx
+
+            self.active_group_names.remove(grp_name)
+            self.active_group_ids.remove(str(grp_id))     
+
+            self.serv.remove_user_from_group(self.username, public=False, group_id=grp_id)
+
+            response_body = {
+                "group_id":grp_id,
+                "group_name":grp_name
+            }
+
+            return ("0", response_body)       
+
         elif command == "groupmessage":
             ...
     
