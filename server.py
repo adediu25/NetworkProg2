@@ -332,7 +332,26 @@ class ClientRequest:
             ...
         
         elif command == "groupusers":
-            ...
+            group_identity = body
+
+            if group_identity.isnumeric():
+                grp_id = int(group_identity)
+                grp_name = self.serv.message_boards[grp_id].group_name
+            else:
+                grp_name = group_identity
+                for idx, group in enumerate(self.serv.message_boards):
+                    if group.group_name == grp_name:
+                        grp_id = idx
+            
+            users = self.serv.get_group_users(public=False, group_id=grp_id)
+
+            response_body = {
+                "users":users,
+                "group_id":grp_id,
+                "group_name":grp_name
+            }
+
+            return ("0", response_body)
         
         elif command == "groupleave":
             group_identity = body

@@ -235,7 +235,45 @@ class BulletinClient:
             ...
         
         elif split_command[0] == "%groupusers":
-            ...
+            group_identity = split_command[1]
+            
+            # error checking if given ID
+            if group_identity.isnumeric():
+                # display error if invalid ID
+                if int(group_identity) > 5 or int(group_identity) < 1:
+                    print("Error: invalid group ID")
+                    return False
+                # display error if already joined group with given ID
+                if not self.joined_groups[int(group_identity)-1]:
+                    print(f"Error: Not in {group_identity}!")
+                    return False
+            # error checking if given name
+            else:
+                # display error if invalid name
+                if group_identity not in self.group_names:
+                    print("Error: invalid group name")
+                    return False
+                # display error if already joined group with given name
+                id_num = self.group_names.index(group_identity)
+                if not self.joined_groups[id_num]:
+                    print(f"Error: Not in {group_identity}!")
+                    return False
+
+            request = {
+                "command":"groupusers",
+                "body":group_identity
+            }
+
+            self.send_request(request)
+
+            response = json.loads(self.receive_response())
+            body = response["body"]
+
+            if response["code"] == "0":
+                print(f"Users belonging to group {group_identity}:")
+                for user in body["users"]:
+                    print(user)
+                self.private_users[body["group_id"]-1] = body["users"]
 
         elif split_command[0] == "%groupleave":
             group_identity = split_command[1]
