@@ -77,6 +77,10 @@ class BulletinClient:
             self.display_groups()
 
         elif (split_command[0] == "%join"):
+            if self.joined_public:
+                print("Already in public group!")
+                return False
+
             message = {
                 "command":"join",
                 "body":""
@@ -168,6 +172,8 @@ class BulletinClient:
                 self.public_users = []
                 self.joined_public = False
 
+        elif (split_command[0] == "%groups"):
+            self.display_groups()
         else:
             print("Invalid command: command not recognized")
 
@@ -229,10 +235,10 @@ class BulletinClient:
         }
 
         self.send_request(request)
-        print(request)
+        # print(request)
 
         response = json.loads(self.receive_response())
-        print(response)
+        # print(response)
 
         usrs_joined = response["body"]["joined"]
         usrs_left = response["body"]["left"]
