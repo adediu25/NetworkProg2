@@ -19,13 +19,16 @@ class BulletinClient:
 
         # continuously prompt user for command until client exits program
         while not terminate:
-            terminate = self.process_command(input("\nEnter a command: "))
-
+            try:
+                terminate = self.process_command(input("\nEnter a command: "))
+            except:
+                print("Error processing command.")
             # if user has joined public group, check for updates with server
             if self.joined_public:
                 self.check_public_updates()
 
-            # TODO: add private group updates
+            # checks updates for all private groups user is in
+            self.check_private_group_updates()
 
     # Processes given command and executes appropriate action 
     # return True if exiting program, else False
@@ -221,12 +224,12 @@ class BulletinClient:
                 print(f"Joined group {group_identity}. Users belonging to group:")
                 for user in body["users"]:
                     print(user)
-                self.private_users[body["group_id"]] = body["users"]
+                self.private_users[body["group_id"]-1] = body["users"]
 
                 print("Messages posted to board:")
                 for mes in body["messages"]:
                     print(mes)
-                self.private_messages[body["group_id"]] = body["messages"]
+                self.private_messages[body["group_id"]-1] = body["messages"]
 
                 self.joined_groups[body["group_id"]-1] = True
                 self.group_names.append(body["group_name"])
@@ -511,7 +514,47 @@ class BulletinClient:
             print(f"ID: {body['ids'][i]} Name: {body['names'][i]}")
 
         self.group_names = body["names"]
+    
+    def check_private_group_updates(self):
+        # iterate through all groups and send request to check only 
+        # if the client is in the group        
+        for idx, grp in enumerate(self.joined_groups):
+            if grp:
+                request = {
+                    "command":"private_updates",
+                    "body":{
+                        "group_id":(idx+1),
+                        "client_user_list":self.private_users[idx],
+                        "client_message_list":self.private_messages[idx]
+                    }
+                }
 
+                self.send_request(request)
+                # print(request)
+
+                response = json.loads(self.receive_response())
+                print(response)
+
+                usrs_joined = response["body"]["joined"]
+                usrs_left = response["body"]["left"]
+                new_messages = response["body"]["new_messages"]
+
+                # display any updates to user
+                if len(usrs_joined) != 0:
+                    print(f"Users joined group {idx+1}:")
+                    for usr in usrs_joined:
+                        print(usr)
+                        self.private_users[idx].append(usr)
+                if len(usrs_left) != 0:
+                    print(f"Users left group {idx+1}:")
+                    for usr in usrs_left:
+                        print(usr)
+                        self.private_users[idx].remove(usr)
+                if len(new_messages) != 0:
+                    print(f"New messages in group {idx+1}:")
+                    for msg in new_messages:
+                        print(msg)
+                        self.private_messages[idx].append(msg)
 
 if __name__ == "__main__":
     print("Welcome!")

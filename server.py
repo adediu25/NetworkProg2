@@ -166,8 +166,25 @@ class BulletinServer:
 
             return users_joined, users_left, messages_added
 
-        # TODO: add handling for part 2
-    
+        else:
+            if group_id is not None:
+                for user in self.message_boards[group_id].users:
+                    if user not in usrs:
+                        users_joined.append(user)
+                
+                for user in usrs:
+                    if user not in self.message_boards[group_id].users:
+                        users_left.append(user)
+
+                if len(msgs) < len(self.message_boards[group_id].messages):
+                    new_messages = self.message_boards[group_id].messages[len(msgs):]
+                    for message in new_messages:
+                        messages_added.append(f"Message ID: {message.message_id}, Sender: {message.sender}, Post Date: {message.post_date}, Subject: {message.subject}")
+
+                return users_joined, users_left, messages_added
+            else:
+                pass
+
     # returns lists of private group ids and names
     def get_groups(self) -> (list,list):
         ids = []
@@ -304,6 +321,23 @@ class ClientRequest:
             }
 
             return ("0", response_body)
+
+        elif command == "private_updates":
+            grp_id = body["group_id"]
+            curr_users = body["client_user_list"]
+            curr_messages = body["client_message_list"]
+
+            users_joined, users_left, messages_added = self.serv.check_updates(curr_users, curr_messages, public=False, group_id=grp_id)
+
+            response_body = {
+                "group_id":grp_id,
+                "joined":users_joined,
+                "left":users_left,
+                "new_messages":messages_added
+            }
+
+            return ("0", response_body)
+        
         elif command == "groups":
             ids, names = self.serv.get_groups()
 
