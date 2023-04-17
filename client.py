@@ -110,7 +110,7 @@ class BulletinClient:
             self.public_messages = body["messages"]
 
             self.joined_public = True
-#mark
+
         elif (split_command[0] == "%post"):
             subject = ""
             body = ""
@@ -336,7 +336,7 @@ class BulletinClient:
                 if int(group_identity) > 5 or int(group_identity) < 1:
                     print("Error: invalid group ID")
                     return False
-                # display error if already joined group with given ID
+                # display error if already not in group with given ID
                 if not self.joined_groups[int(group_identity)-1]:
                     print(f"Already not in {group_identity}!")
                     return False
@@ -346,7 +346,7 @@ class BulletinClient:
                 if group_identity not in self.group_names:
                     print("Error: invalid group name")
                     return False
-                # display error if already joined group with given name
+                # display error if already not in group with given name
                 id_num = self.group_names.index(group_identity)
                 if not self.joined_groups[id_num]:
                     print(f"Already not in {group_identity}!")
@@ -369,7 +369,44 @@ class BulletinClient:
                 self.private_users[grp_id-1] = []
 
         elif split_command[0] == "%groupmessage":
-            ...
+            group_identity = split_command[1]
+            msg_id = split_command[2]
+
+            # error checking if given ID
+            if group_identity.isnumeric():
+                # display error if invalid ID
+                if int(group_identity) > 5 or int(group_identity) < 1:
+                    print("Error: invalid group ID")
+                    return False
+                # display error if not in group with given ID
+                if not self.joined_groups[int(group_identity)-1]:
+                    print(f"Not in group {group_identity}!")
+                    return False
+            # error checking if given name
+            else:
+                # display error if invalid name
+                if group_identity not in self.group_names:
+                    print("Error: invalid group name")
+                    return False
+                # display error if not in group with given name
+                id_num = self.group_names.index(group_identity)
+                if not self.joined_groups[id_num]:
+                    print(f"Not in group {group_identity}!")
+                    return False
+
+            request = {
+                "command":"groupmessage",
+                "body":{
+                    "group_identity":group_identity,
+                    "message_id":msg_id
+                }
+            }
+            
+            self.send_request(request)
+
+            # receive response and display message subject and body
+            response = json.loads(self.receive_response())
+            print(f"Subject: {response['body']['subject']}\nBody: {response['body']['body']}")
         
         else:
             print("Invalid command: command not recognized")

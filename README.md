@@ -1,3 +1,7 @@
+# Project Authors
+
+Alex Dediu and Sara Marijolovic
+
 # Running The Project
 
 The only requirement for running is Python 3. All the packages used are in the standard library.

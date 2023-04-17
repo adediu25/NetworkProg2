@@ -109,10 +109,13 @@ class BulletinServer:
             self.message_boards[0].message_id_counter += 1
         # TODO: add handling for part 2
         else:
-            self.message_boards[group_id].messages.append(
-                PostedMessage(self.message_boards[group_id].message_id_counter, user, subject, body)
-            )
-            self.message_boards[group_id].message_id_counter += 1
+            if group_id is not None:
+                self.message_boards[group_id].messages.append(
+                    PostedMessage(self.message_boards[group_id].message_id_counter, user, subject, body)
+                )
+                self.message_boards[group_id].message_id_counter += 1
+            else:
+                pass
 
     # returns message subject and body by given message id from given group
     # defaults to public board
@@ -125,6 +128,16 @@ class BulletinServer:
                         "body":message.body
                     }
         # TODO: add handling for part 2
+        else:
+            if group_id is not None:
+                for message in self.message_boards[group_id].messages:
+                    if str(message.message_id) == message_id:
+                        return {
+                            "subject":message.subject,
+                            "body":message.body
+                        }
+            else:
+                pass
 
     # This function is serves the purpose of sending updates to the client
     # including users that joined or left a group and new messages posted to a boards
@@ -398,7 +411,21 @@ class ClientRequest:
             return ("0", response_body)       
 
         elif command == "groupmessage":
-            ...
+            group_identity = body["group_identity"]
+            msg_id = body["message_id"]
+
+            if group_identity.isnumeric():
+                grp_id = int(group_identity)
+                grp_name = self.serv.message_boards[grp_id].group_name
+            else:
+                grp_name = group_identity
+                for idx, group in enumerate(self.serv.message_boards):
+                    if group.group_name == grp_name:
+                        grp_id = idx
+
+            message = self.serv.get_message_from_board(msg_id, public=False, group_id=grp_id)
+
+            return ("0", message)
     
     # construct protocol message with given code and body
     # and send the response to the client
@@ -419,11 +446,11 @@ if __name__ == "__main__":
     server.add_boards(
         [
             MessageBoard(0, "public"),
-            MessageBoard(1, 'a'),
-            MessageBoard(2, 'b'),
-            MessageBoard(3, 'c'),
-            MessageBoard(4, 'd'),
-            MessageBoard(5, 'e')
+            MessageBoard(1, 'Cats'),
+            MessageBoard(2, 'Dogs'),
+            MessageBoard(3, 'School'),
+            MessageBoard(4, 'Cars'),
+            MessageBoard(5, 'Food')
         ]
     )
 
