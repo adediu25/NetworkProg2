@@ -110,7 +110,7 @@ class BulletinClient:
             self.public_messages = body["messages"]
 
             self.joined_public = True
-
+#mark
         elif (split_command[0] == "%post"):
             subject = ""
             body = ""
@@ -232,7 +232,59 @@ class BulletinClient:
                 self.group_names.append(body["group_name"])
 
         elif split_command[0] == "%grouppost":
-            ...
+            group_identity = split_command[1]
+            
+            # error checking if given ID
+            if group_identity.isnumeric():
+                # display error if invalid ID
+                if int(group_identity) > 5 or int(group_identity) < 1:
+                    print("Error: invalid group ID")
+                    return False
+                # display error if already joined group with given ID
+                if not self.joined_groups[int(group_identity)-1]:
+                    print(f"Error: Not in {group_identity}!")
+                    return False
+            # error checking if given name
+            else:
+                # display error if invalid name
+                if group_identity not in self.group_names:
+                    print("Error: invalid group name")
+                    return False
+                # display error if already joined group with given name
+                id_num = self.group_names.index(group_identity)
+                if not self.joined_groups[id_num]:
+                    print(f"Error: Not in {group_identity}!")
+                    return False
+
+            body = ""
+            subject = ""
+
+            for i, word in enumerate(split_command):
+                if i == 0 or i == 1 or i == 2 :
+                    continue
+                if word == "-b":
+                    break
+            
+                subject += word + " "
+            
+            for word in split_command[i+1:]:
+                body += word + " "
+
+            request = {
+                "command":"grouppost",
+                "body":{
+                    "group_identity":group_identity,
+                    "subject":subject,
+                    "body":body
+                }
+            }
+
+            print(request)
+            # self.send_request(request)
+
+            response = json.loads(self.receive_response())
+
+            print(response["body"])
         
         elif split_command[0] == "%groupusers":
             group_identity = split_command[1]
