@@ -108,6 +108,11 @@ class BulletinServer:
             )
             self.message_boards[0].message_id_counter += 1
         # TODO: add handling for part 2
+        else:
+            self.message_boards[group_id].messages.append(
+                PostedMessage(self.message_boards[group_id].message_id_counter, user, subject, body)
+            )
+            self.message_boards[group_id].message_id_counter += 1
 
     # returns message subject and body by given message id from given group
     # defaults to public board
@@ -253,10 +258,10 @@ class ClientRequest:
             return ("0", users)
         elif command == "post":
             subject = body["subject"]
-            body = body["body"]
+            msg_body = body["body"]
 
             # post message to server
-            self.serv.post_message_to_board(self.username, subject, body)
+            self.serv.post_message_to_board(self.username, subject, msg_body)
 
             return("0", "Message was posted!")
         elif command == "message":
@@ -329,8 +334,23 @@ class ClientRequest:
             return ("0", response_body)
         
         elif command == "grouppost":
-            ...
+            group_identity = body["group_identity"]
+            subject = body["subject"]
+            msg_body = body["body"]
+
+            if group_identity.isnumeric():
+                grp_id = int(group_identity)
+                grp_name = self.serv.message_boards[grp_id].group_name
+            else:
+                grp_name = group_identity
+                for idx, group in enumerate(self.serv.message_boards):
+                    if group.group_name == grp_name:
+                        grp_id = idx
         
+            self.serv.post_message_to_board(self.username, subject, msg_body, public=False, group_id=grp_id)
+
+            return("0", "Message was posted!")
+
         elif command == "groupusers":
             group_identity = body
 

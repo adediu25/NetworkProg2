@@ -279,8 +279,8 @@ class BulletinClient:
                 }
             }
 
-            print(request)
-            # self.send_request(request)
+            # print(request)
+            self.send_request(request)
 
             response = json.loads(self.receive_response())
 
