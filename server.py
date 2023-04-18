@@ -52,22 +52,35 @@ class BulletinServer:
             return self.message_boards[0].messages[-2:]
 
         # TODO: add handling for part 2
-    
+        else:
+            if group_id is not None:
+                self.message_boards[group_id].users.append(user)
+                return self.message_boards[group_id].messages[-2:]
+            else:
+                ...
+
+
     # returns list of users in given group, defaults to public group
     def get_group_users(self, public=True, group_id=None, group_name=None) -> list:
-        users = []
-
         if public:
             return self.message_boards[0].users
         # TODO: add handling for part 2
-        
-        return users
+        else:
+            if group_id is not None:
+                return self.message_boards[group_id].users
+            else:
+                ...
 
     # remove given user from given group, defaults to public group
     def remove_user_from_group(self, user:str, public=True, group_id=None, group_name=None) -> None:
         if public:
             self.message_boards[0].users.remove(user)
         # TODO: add handling for part 2
+        else:
+            if group_id is not None:
+                self.message_boards[group_id].users.remove(user)
+            else:
+                ...
 
     # removes given user from every board on the server
     # this is used if client disconnects without
@@ -95,6 +108,14 @@ class BulletinServer:
             )
             self.message_boards[0].message_id_counter += 1
         # TODO: add handling for part 2
+        else:
+            if group_id is not None:
+                self.message_boards[group_id].messages.append(
+                    PostedMessage(self.message_boards[group_id].message_id_counter, user, subject, body)
+                )
+                self.message_boards[group_id].message_id_counter += 1
+            else:
+                pass
 
     # returns message subject and body by given message id from given group
     # defaults to public board
@@ -107,6 +128,16 @@ class BulletinServer:
                         "body":message.body
                     }
         # TODO: add handling for part 2
+        else:
+            if group_id is not None:
+                for message in self.message_boards[group_id].messages:
+                    if str(message.message_id) == message_id:
+                        return {
+                            "subject":message.subject,
+                            "body":message.body
+                        }
+            else:
+                pass
 
     # This function is serves the purpose of sending updates to the client
     # including users that joined or left a group and new messages posted to a boards
@@ -135,10 +166,39 @@ class BulletinServer:
 
             return users_joined, users_left, messages_added
 
-        # TODO: add handling for part 2
+        else:
+            if group_id is not None:
+                for user in self.message_boards[group_id].users:
+                    if user not in usrs:
+                        users_joined.append(user)
+                
+                for user in usrs:
+                    if user not in self.message_boards[group_id].users:
+                        users_left.append(user)
 
+                if len(msgs) < len(self.message_boards[group_id].messages):
+                    new_messages = self.message_boards[group_id].messages[len(msgs):]
+                    for message in new_messages:
+                        messages_added.append(f"Message ID: {message.message_id}, Sender: {message.sender}, Post Date: {message.post_date}, Subject: {message.subject}")
 
+                return users_joined, users_left, messages_added
+            else:
+                pass
 
+    # returns lists of private group ids and names
+    def get_groups(self) -> (list,list):
+        ids = []
+        names = []
+
+        # iterate through boards but skip first as it is the public one
+        for group in self.message_boards[1:]:
+            ids.append(group.group_id)
+            names.append(group.group_name)
+
+        return ids, names
+
+    # constantly listens for new connections and starts a ClientRequest
+    # thread for each connection
     def __call__(self):
         self.server_socket.listen()
 
@@ -230,10 +290,10 @@ class ClientRequest:
             return ("0", users)
         elif command == "post":
             subject = body["subject"]
-            body = body["body"]
+            msg_body = body["body"]
 
             # post message to server
-            self.serv.post_message_to_board(self.username, subject, body)
+            self.serv.post_message_to_board(self.username, subject, msg_body)
 
             return("0", "Message was posted!")
         elif command == "message":
@@ -264,6 +324,155 @@ class ClientRequest:
 
             return ("0", response_body)
 
+        elif command == "private_updates":
+            grp_id = body["group_id"]
+            curr_users = body["client_user_list"]
+            curr_messages = body["client_message_list"]
+
+            users_joined, users_left, messages_added = self.serv.check_updates(curr_users, curr_messages, public=False, group_id=grp_id)
+
+            response_body = {
+                "group_id":grp_id,
+                "joined":users_joined,
+                "left":users_left,
+                "new_messages":messages_added
+            }
+
+            return ("0", response_body)
+        
+        elif command == "groups":
+            ids, names = self.serv.get_groups()
+
+            response_body = {
+                "ids":ids,
+                "names":names
+            }
+
+            return ("0", response_body)
+
+        elif command == "groupjoin":
+            group_identity = body
+
+            # identify if given ID or name for user
+            # and also determine the other
+            if group_identity.isnumeric():
+                grp_id = int(group_identity)
+                grp_name = self.serv.message_boards[grp_id].group_name
+            else:
+                grp_name = group_identity
+                for idx, group in enumerate(self.serv.message_boards):
+                    if group.group_name == grp_name:
+                        grp_id = idx
+                
+            messages = self.serv.add_user_to_board(self.username, public=False, group_id=grp_id)
+            
+            self.active_group_names.append(grp_name)
+            self.active_group_ids.append(str(grp_id))
+
+            users = self.serv.get_group_users(public=False, group_id=grp_id)
+
+            messages_list = []
+            for message in messages:
+                messages_list.append(f"Message ID: {message.message_id}, Sender: {message.sender}, Post Date: {message.post_date}, Subject: {message.subject}")
+            
+            response_body = {
+                "group_id": grp_id,
+                "group_name": grp_name,
+                "users": users,
+                "messages": messages_list
+            }
+
+            return ("0", response_body)
+        
+        elif command == "grouppost":
+            group_identity = body["group_identity"]
+            subject = body["subject"]
+            msg_body = body["body"]
+
+            # identify if given ID or name for user
+            # and also determine the other
+            if group_identity.isnumeric():
+                grp_id = int(group_identity)
+                grp_name = self.serv.message_boards[grp_id].group_name
+            else:
+                grp_name = group_identity
+                for idx, group in enumerate(self.serv.message_boards):
+                    if group.group_name == grp_name:
+                        grp_id = idx
+        
+            self.serv.post_message_to_board(self.username, subject, msg_body, public=False, group_id=grp_id)
+
+            return("0", "Message was posted!")
+
+        elif command == "groupusers":
+            group_identity = body
+
+            # identify if given ID or name for user
+            # and also determine the other
+            if group_identity.isnumeric():
+                grp_id = int(group_identity)
+                grp_name = self.serv.message_boards[grp_id].group_name
+            else:
+                grp_name = group_identity
+                for idx, group in enumerate(self.serv.message_boards):
+                    if group.group_name == grp_name:
+                        grp_id = idx
+            
+            users = self.serv.get_group_users(public=False, group_id=grp_id)
+
+            response_body = {
+                "users":users,
+                "group_id":grp_id,
+                "group_name":grp_name
+            }
+
+            return ("0", response_body)
+        
+        elif command == "groupleave":
+            group_identity = body
+
+            # identify if given ID or name for user
+            # and also determine the other
+            if group_identity.isnumeric():
+                grp_id = int(group_identity)
+                grp_name = self.serv.message_boards[grp_id].group_name
+            else:
+                grp_name = group_identity
+                for idx, group in enumerate(self.serv.message_boards):
+                    if group.group_name == grp_name:
+                        grp_id = idx
+
+            # remove the group from the active groups for this connection
+            self.active_group_names.remove(grp_name)
+            self.active_group_ids.remove(str(grp_id))     
+            
+            self.serv.remove_user_from_group(self.username, public=False, group_id=grp_id)
+
+            response_body = {
+                "group_id":grp_id,
+                "group_name":grp_name
+            }
+
+            return ("0", response_body)       
+
+        elif command == "groupmessage":
+            group_identity = body["group_identity"]
+            msg_id = body["message_id"]
+
+            # identify if given ID or name for user
+            # and also determine the other
+            if group_identity.isnumeric():
+                grp_id = int(group_identity)
+                grp_name = self.serv.message_boards[grp_id].group_name
+            else:
+                grp_name = group_identity
+                for idx, group in enumerate(self.serv.message_boards):
+                    if group.group_name == grp_name:
+                        grp_id = idx
+
+            message = self.serv.get_message_from_board(msg_id, public=False, group_id=grp_id)
+
+            return ("0", message)
     
     # construct protocol message with given code and body
     # and send the response to the client
@@ -284,11 +493,11 @@ if __name__ == "__main__":
     server.add_boards(
         [
             MessageBoard(0, "public"),
-            MessageBoard(1, 'a'),
-            MessageBoard(2, 'b'),
-            MessageBoard(3, 'c'),
-            MessageBoard(4, 'd'),
-            MessageBoard(5, 'e')
+            MessageBoard(1, 'Cats'),
+            MessageBoard(2, 'Dogs'),
+            MessageBoard(3, 'School'),
+            MessageBoard(4, 'Cars'),
+            MessageBoard(5, 'Food')
         ]
     )
 

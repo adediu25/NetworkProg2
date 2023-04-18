@@ -6,20 +6,29 @@ class BulletinClient:
         self.connection_socket = socket.socket()
         self.connected = False
         self.joined_public = False
+        self.joined_groups = [False]*5
+        self.group_names = []
         # client maintains lists of users and messages that it currently knows of
         self.public_messages = []
         self.public_users = []
+        self.private_messages = [[]]*5
+        self.private_users = [[]]*5
 
     def __call__(self):
         terminate = False
 
         # continuously prompt user for command until client exits program
         while not terminate:
-            terminate = self.process_command(input("\nEnter a command: "))
-
+            try:
+                terminate = self.process_command(input("\nEnter a command: "))
+            except:
+                print("Error processing command.")
             # if user has joined public group, check for updates with server
             if self.joined_public:
                 self.check_public_updates()
+
+            # checks updates for all private groups user is in
+            self.check_private_group_updates()
 
     # Processes given command and executes appropriate action 
     # return True if exiting program, else False
@@ -47,7 +56,7 @@ class BulletinClient:
             self.send_request(message)
 
             response = json.loads(self.receive_response())
-            print(response)
+            print(response["body"])
 
             # close connection with server
             self.connection_socket.close()
@@ -74,7 +83,13 @@ class BulletinClient:
             username = input("Enter a username for the server: ")
             self.choose_username(username)
 
+            self.display_groups()
+
         elif (split_command[0] == "%join"):
+            if self.joined_public:
+                print("Already in public group!")
+                return False
+
             message = {
                 "command":"join",
                 "body":""
@@ -166,6 +181,242 @@ class BulletinClient:
                 self.public_users = []
                 self.joined_public = False
 
+        elif (split_command[0] == "%groups"):
+            self.display_groups()
+
+        elif split_command[0] == "%groupjoin":
+            group_identity = split_command[1]
+
+            # error checking if given ID
+            if group_identity.isnumeric():
+                # display error if invalid ID
+                if int(group_identity) > 5 or int(group_identity) < 1:
+                    print("Error: invalid group ID")
+                    return False
+                # display error if already joined group with given ID
+                if self.joined_groups[int(group_identity)-1]:
+                    print(f"Already in group {group_identity}!")
+                    return False
+            # error checking if given name
+            else:
+                # display error if invalid name
+                if group_identity not in self.group_names:
+                    print("Error: invalid group name")
+                    return False
+                # display error if already joined group with given name
+                id_num = self.group_names.index(group_identity)
+                if self.joined_groups[id_num]:
+                    print(f"Already in group {group_identity}!")
+                    return False
+
+            # send server request
+            request = {
+                "command":"groupjoin",
+                "body":group_identity
+            }
+
+            self.send_request(request)
+
+            response = json.loads(self.receive_response())
+            body = response["body"]
+
+            if response["code"] == "0":
+                # print list of users in group received from server
+                print(f"Joined group {group_identity}. Users belonging to group:")
+                for user in body["users"]:
+                    print(user)
+                self.private_users[body["group_id"]-1] = body["users"]
+
+                # print list of messages in group received from server
+                print("Messages posted to board:")
+                for mes in body["messages"]:
+                    print(mes)
+                self.private_messages[body["group_id"]-1] = body["messages"]
+
+                # set client known users and messages
+                self.joined_groups[body["group_id"]-1] = True
+                self.group_names.append(body["group_name"])
+
+        elif split_command[0] == "%grouppost":
+            group_identity = split_command[1]
+            
+            # error checking if given ID
+            if group_identity.isnumeric():
+                # display error if invalid ID
+                if int(group_identity) > 5 or int(group_identity) < 1:
+                    print("Error: invalid group ID")
+                    return False
+                # display error if already joined group with given ID
+                if not self.joined_groups[int(group_identity)-1]:
+                    print(f"Error: Not in {group_identity}!")
+                    return False
+            # error checking if given name
+            else:
+                # display error if invalid name
+                if group_identity not in self.group_names:
+                    print("Error: invalid group name")
+                    return False
+                # display error if already joined group with given name
+                id_num = self.group_names.index(group_identity)
+                if not self.joined_groups[id_num]:
+                    print(f"Error: Not in {group_identity}!")
+                    return False
+
+            body = ""
+            subject = ""
+
+            # parsing command for subject and body
+            for i, word in enumerate(split_command):
+                if i == 0 or i == 1 or i == 2 :
+                    continue
+                if word == "-b":
+                    break
+            
+                subject += word + " "
+            
+            for word in split_command[i+1:]:
+                body += word + " "
+
+            request = {
+                "command":"grouppost",
+                "body":{
+                    "group_identity":group_identity,
+                    "subject":subject,
+                    "body":body
+                }
+            }
+
+            # print(request)
+            self.send_request(request)
+
+            response = json.loads(self.receive_response())
+
+            print(response["body"])
+        
+        elif split_command[0] == "%groupusers":
+            group_identity = split_command[1]
+            
+            # error checking if given ID
+            if group_identity.isnumeric():
+                # display error if invalid ID
+                if int(group_identity) > 5 or int(group_identity) < 1:
+                    print("Error: invalid group ID")
+                    return False
+                # display error if already joined group with given ID
+                if not self.joined_groups[int(group_identity)-1]:
+                    print(f"Error: Not in {group_identity}!")
+                    return False
+            # error checking if given name
+            else:
+                # display error if invalid name
+                if group_identity not in self.group_names:
+                    print("Error: invalid group name")
+                    return False
+                # display error if already joined group with given name
+                id_num = self.group_names.index(group_identity)
+                if not self.joined_groups[id_num]:
+                    print(f"Error: Not in {group_identity}!")
+                    return False
+
+            request = {
+                "command":"groupusers",
+                "body":group_identity
+            }
+
+            self.send_request(request)
+
+            response = json.loads(self.receive_response())
+            body = response["body"]
+
+            # printing list of users received
+            if response["code"] == "0":
+                print(f"Users belonging to group {group_identity}:")
+                for user in body["users"]:
+                    print(user)
+                self.private_users[body["group_id"]-1] = body["users"]
+
+        elif split_command[0] == "%groupleave":
+            group_identity = split_command[1]
+            
+            # error checking if given ID
+            if group_identity.isnumeric():
+                # display error if invalid ID
+                if int(group_identity) > 5 or int(group_identity) < 1:
+                    print("Error: invalid group ID")
+                    return False
+                # display error if already not in group with given ID
+                if not self.joined_groups[int(group_identity)-1]:
+                    print(f"Already not in {group_identity}!")
+                    return False
+            # error checking if given name
+            else:
+                # display error if invalid name
+                if group_identity not in self.group_names:
+                    print("Error: invalid group name")
+                    return False
+                # display error if already not in group with given name
+                id_num = self.group_names.index(group_identity)
+                if not self.joined_groups[id_num]:
+                    print(f"Already not in {group_identity}!")
+                    return False
+
+            request = {
+                "command":"groupleave",
+                "body":group_identity
+            }
+
+            self.send_request(request)
+
+            response = json.loads(self.receive_response())
+
+            # clearing known users and messages from group user left
+            if response["code"] == "0":
+                print(f"Left group {group_identity}")
+                grp_id = response["body"]["group_id"]
+                self.joined_groups[grp_id-1] = False
+                self.private_messages[grp_id-1] = []
+                self.private_users[grp_id-1] = []
+
+        elif split_command[0] == "%groupmessage":
+            group_identity = split_command[1]
+            msg_id = split_command[2]
+
+            # error checking if given ID
+            if group_identity.isnumeric():
+                # display error if invalid ID
+                if int(group_identity) > 5 or int(group_identity) < 1:
+                    print("Error: invalid group ID")
+                    return False
+                # display error if not in group with given ID
+                if not self.joined_groups[int(group_identity)-1]:
+                    print(f"Not in group {group_identity}!")
+                    return False
+            # error checking if given name
+            else:
+                # display error if invalid name
+                if group_identity not in self.group_names:
+                    print("Error: invalid group name")
+                    return False
+                # display error if not in group with given name
+                id_num = self.group_names.index(group_identity)
+                if not self.joined_groups[id_num]:
+                    print(f"Not in group {group_identity}!")
+                    return False
+
+            request = {
+                "command":"groupmessage",
+                "body":{
+                    "group_identity":group_identity,
+                    "message_id":msg_id
+                }
+            }
+            
+            self.send_request(request)
+
+            # receive response and display message subject and body
+            response = json.loads(self.receive_response())
+            print(f"Subject: {response['body']['subject']}\nBody: {response['body']['body']}")
+        
         else:
             print("Invalid command: command not recognized")
 
@@ -227,10 +478,10 @@ class BulletinClient:
         }
 
         self.send_request(request)
-        print(request)
+        # print(request)
 
         response = json.loads(self.receive_response())
-        print(response)
+        # print(response)
 
         usrs_joined = response["body"]["joined"]
         usrs_left = response["body"]["left"]
@@ -252,7 +503,70 @@ class BulletinClient:
             for msg in new_messages:
                 print(msg)
                 self.public_messages.append(msg)
+            
+    # This function sends request for groups to server
+    # and displays them to user
+    def display_groups(self):
+        request = {
+            "command":"groups",
+            "body":""
+        }
 
+        self.send_request(request)
+        response = json.loads(self.receive_response())
+
+        body = response["body"]
+
+        print("Private groups available to join on server:")
+        for i in range(len(body["ids"])):
+            print(f"ID: {body['ids'][i]} Name: {body['names'][i]}")
+
+        # setting local list of groups
+        self.group_names = body["names"]
+    
+    # This function works just like the public update one, however it
+    # sends a request for updates for all the private groups that the 
+    # user belongs to
+    def check_private_group_updates(self):
+        # iterate through all groups and send request to check only 
+        # if the client is in the group        
+        for idx, grp in enumerate(self.joined_groups):
+            if grp:
+                request = {
+                    "command":"private_updates",
+                    "body":{
+                        "group_id":(idx+1),
+                        "client_user_list":self.private_users[idx],
+                        "client_message_list":self.private_messages[idx]
+                    }
+                }
+
+                self.send_request(request)
+                # print(request)
+
+                response = json.loads(self.receive_response())
+                # print(response)
+
+                usrs_joined = response["body"]["joined"]
+                usrs_left = response["body"]["left"]
+                new_messages = response["body"]["new_messages"]
+
+                # display any updates to user
+                if len(usrs_joined) != 0:
+                    print(f"Users joined group {idx+1}:")
+                    for usr in usrs_joined:
+                        print(usr)
+                        self.private_users[idx].append(usr)
+                if len(usrs_left) != 0:
+                    print(f"Users left group {idx+1}:")
+                    for usr in usrs_left:
+                        print(usr)
+                        self.private_users[idx].remove(usr)
+                if len(new_messages) != 0:
+                    print(f"New messages in group {idx+1}:")
+                    for msg in new_messages:
+                        print(msg)
+                        self.private_messages[idx].append(msg)
 
 if __name__ == "__main__":
     print("Welcome!")
