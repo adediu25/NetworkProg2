@@ -38,25 +38,9 @@ Usage: `%join`
 
 Protocol Response Message body:
 
-```json
-{
-    "users": "<users in group>",
-    "messages": "<last two messages on board>"
-}
-```
-
 ## %post
 
 Usage: `%post -s <message subject> -b <message body>`
-
-Protocol Request Message body:
-
-```json
-{
-    "subject": "<subject line>",
-    "body": "<message body>"
-}
-```
 
 ## %users
 
@@ -77,17 +61,6 @@ Usage: `%leave`
 Retreive the message with the given ID from the public board
 
 Usage: `%message <message id>`
-
-Protocol Request Message body: message ID
-
-Protocol Response Message body:
-
-```json
-{
-    "subject": "<subject line>",
-    "body": "<message body>"
-}
-```
 
 ## %exit
 
@@ -152,6 +125,8 @@ User has the choice of giving a group name or a group ID number in the command
 # Protocol Message Formats
 
 ## Request
+
+The body/payload can be a single object, or it can also be a json object if multiple items need to be sent.
 
 ```json
 {
