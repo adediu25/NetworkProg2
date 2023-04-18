@@ -111,6 +111,36 @@ User has the choice of giving a group name or a group ID number in the command
 
 ## %grouppost
 
+Post a message to a given private board. Must first join the board.
+
+Usage: `%grouppost <group ID or name> -s <message subject> -b <message body>`
+
+User has the choice of giving a group name or a group ID number in the command
+
+## %groupusers
+
+List users in given private group
+
+Usage: `%groupusers <group ID or name>`
+
+User has the choice of giving a group name or a group ID number in the command
+
+## %groupleave
+
+Leave given private group. User must currently in group
+
+Usage: `%groupleave <group ID or name>`
+
+User has the choice of giving a group name or a group ID number in the command
+
+## %groupmessage
+
+Retrieve a message posted to a private board. Must be in private group and message ID must exist.
+
+Usage: `%groupleave <group ID or name> <messgae ID>`
+
+User has the choice of giving a group name or a group ID number in the command
+
 # Response codes
 
 - 0: success
@@ -138,3 +168,9 @@ User has the choice of giving a group name or a group ID number in the command
     "body": "<payload>"
 }
 ```
+
+# Project Challenges
+
+The only real challenge encountered was dealing with notifying the client when a user joins one of their groups or posts a message or leaves. The issue is that our client program blocks while waiting for the user to enter a command, so it cannot receive a response from the server with an update. The solution devised was to check with the server for any updates for every iteration of the client program. The client program keeps track of all the users and messages it knows about, then will check against what is true on the server. If there are any updates, the client program will display them to the user and update its own database. Obviously this solution is not optimal because updates are not received/displayed in real time. We could not think of any better solution.
+
+Another roadblock was dealing with ensuring usernames are unique without making the user input the connect command everytime they do not choose a unique user name. The solution was to put the client and server into an infinite loop that breaks only once the user chooses a good username. The client program send the desired username to the server, the server checks uniqueness and relays the success or failure to the client. The client will reprompt the user for another username and send it to the server on failure.

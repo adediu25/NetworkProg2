@@ -197,6 +197,8 @@ class BulletinServer:
 
         return ids, names
 
+    # constantly listens for new connections and starts a ClientRequest
+    # thread for each connection
     def __call__(self):
         self.server_socket.listen()
 
@@ -351,6 +353,8 @@ class ClientRequest:
         elif command == "groupjoin":
             group_identity = body
 
+            # identify if given ID or name for user
+            # and also determine the other
             if group_identity.isnumeric():
                 grp_id = int(group_identity)
                 grp_name = self.serv.message_boards[grp_id].group_name
@@ -385,6 +389,8 @@ class ClientRequest:
             subject = body["subject"]
             msg_body = body["body"]
 
+            # identify if given ID or name for user
+            # and also determine the other
             if group_identity.isnumeric():
                 grp_id = int(group_identity)
                 grp_name = self.serv.message_boards[grp_id].group_name
@@ -401,6 +407,8 @@ class ClientRequest:
         elif command == "groupusers":
             group_identity = body
 
+            # identify if given ID or name for user
+            # and also determine the other
             if group_identity.isnumeric():
                 grp_id = int(group_identity)
                 grp_name = self.serv.message_boards[grp_id].group_name
@@ -423,6 +431,8 @@ class ClientRequest:
         elif command == "groupleave":
             group_identity = body
 
+            # identify if given ID or name for user
+            # and also determine the other
             if group_identity.isnumeric():
                 grp_id = int(group_identity)
                 grp_name = self.serv.message_boards[grp_id].group_name
@@ -432,9 +442,10 @@ class ClientRequest:
                     if group.group_name == grp_name:
                         grp_id = idx
 
+            # remove the group from the active groups for this connection
             self.active_group_names.remove(grp_name)
             self.active_group_ids.remove(str(grp_id))     
-
+            
             self.serv.remove_user_from_group(self.username, public=False, group_id=grp_id)
 
             response_body = {
@@ -448,6 +459,8 @@ class ClientRequest:
             group_identity = body["group_identity"]
             msg_id = body["message_id"]
 
+            # identify if given ID or name for user
+            # and also determine the other
             if group_identity.isnumeric():
                 grp_id = int(group_identity)
                 grp_name = self.serv.message_boards[grp_id].group_name

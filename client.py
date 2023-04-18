@@ -221,16 +221,19 @@ class BulletinClient:
             body = response["body"]
 
             if response["code"] == "0":
+                # print list of users in group received from server
                 print(f"Joined group {group_identity}. Users belonging to group:")
                 for user in body["users"]:
                     print(user)
                 self.private_users[body["group_id"]-1] = body["users"]
 
+                # print list of messages in group received from server
                 print("Messages posted to board:")
                 for mes in body["messages"]:
                     print(mes)
                 self.private_messages[body["group_id"]-1] = body["messages"]
 
+                # set client known users and messages
                 self.joined_groups[body["group_id"]-1] = True
                 self.group_names.append(body["group_name"])
 
@@ -262,6 +265,7 @@ class BulletinClient:
             body = ""
             subject = ""
 
+            # parsing command for subject and body
             for i, word in enumerate(split_command):
                 if i == 0 or i == 1 or i == 2 :
                     continue
@@ -324,6 +328,7 @@ class BulletinClient:
             response = json.loads(self.receive_response())
             body = response["body"]
 
+            # printing list of users received
             if response["code"] == "0":
                 print(f"Users belonging to group {group_identity}:")
                 for user in body["users"]:
@@ -364,6 +369,7 @@ class BulletinClient:
 
             response = json.loads(self.receive_response())
 
+            # clearing known users and messages from group user left
             if response["code"] == "0":
                 print(f"Left group {group_identity}")
                 grp_id = response["body"]["group_id"]
@@ -498,6 +504,8 @@ class BulletinClient:
                 print(msg)
                 self.public_messages.append(msg)
             
+    # This function sends request for groups to server
+    # and displays them to user
     def display_groups(self):
         request = {
             "command":"groups",
@@ -513,8 +521,12 @@ class BulletinClient:
         for i in range(len(body["ids"])):
             print(f"ID: {body['ids'][i]} Name: {body['names'][i]}")
 
+        # setting local list of groups
         self.group_names = body["names"]
     
+    # This function works just like the public update one, however it
+    # sends a request for updates for all the private groups that the 
+    # user belongs to
     def check_private_group_updates(self):
         # iterate through all groups and send request to check only 
         # if the client is in the group        
@@ -533,7 +545,7 @@ class BulletinClient:
                 # print(request)
 
                 response = json.loads(self.receive_response())
-                print(response)
+                # print(response)
 
                 usrs_joined = response["body"]["joined"]
                 usrs_left = response["body"]["left"]
