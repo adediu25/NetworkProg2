@@ -23,6 +23,10 @@ class BulletinClient:
                 terminate = self.process_command(input("\nEnter a command: "))
             except:
                 print("Error processing command.")
+            
+            if terminate:
+                continue
+            
             # if user has joined public group, check for updates with server
             if self.joined_public:
                 self.check_public_updates()

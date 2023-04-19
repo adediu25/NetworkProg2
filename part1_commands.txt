@@ -1,0 +1,12 @@
+Command to connect from each client:
+%connect localhost 6969
+
+then enter a username for each client (unique)
+
+Command to join public group in each client
+
+%join
+
+Command to leave in each client
+
+%leave

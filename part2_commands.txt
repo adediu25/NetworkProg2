@@ -1,0 +1,37 @@
+Connect:
+%connect localhost 6969
+
+client 1 join:
+%groupjoin 1
+
+client 2 join:
+%groupjoin 2
+
+client 3 join:
+%groupjoin 2
+
+client 1 post:
+%grouppost 1 -s My first message -b This is the first message I am posting
+
+client 3 post:
+%grouppost 2 -s Soccer Game -b I won my soccer game!
+
+client 2 join:
+%groupjoin 3
+
+client 2 post:
+%grouppost 3 -s Animals -b My favorite animal is a giraffe
+%grouppost 2 -s Hello -b Hello, world!
+
+client 1 leave:
+%groupleave 1
+
+client 2 leave:
+%groupleave 2
+%groupleave 3
+
+client 3 leave:
+%groupleave 2
+
+exit commands:
+%exit
